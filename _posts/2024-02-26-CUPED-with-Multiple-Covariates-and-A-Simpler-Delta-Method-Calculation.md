@@ -26,7 +26,7 @@ $$
 \end{equation}
 $$
 
-In the previous equation, used the identity $$var(\bar{Y}) = var(Y)/n$$ where $$n$$ is the size of the sample. (We are glossing over many steps and definitions to get to the meat and not distract from the main point. For more details, see the CUPED paper's definitions.)
+In the previous equation, we used the identity $$var(\bar{Y}) = var(Y)/n$$ where $$n$$ is the size of the sample. (We are glossing over many steps and definitions to get to the meat and not distract from the main point. For more details, see the CUPED paper's definitions.)
 
 Now, consider $$g(\boldsymbol \theta):=var(Y_{cv})$$ where $$\boldsymbol\theta:= (\theta_1,\dots, \theta_m)$$.
 
