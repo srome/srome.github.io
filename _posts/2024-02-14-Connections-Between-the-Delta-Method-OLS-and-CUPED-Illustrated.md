@@ -11,10 +11,10 @@ summary: Empirical evidence of the equivalence of OLS and CUPED, plus special co
 In the past decade, there have been many advancements to enable A/B testing at (sometimes even small!) scale. Thankfully, many A/B testing practitioners have come forward and written [books](https://experimentguide.com/) and [papers](https://www.kdd.org/kdd2016/papers/files/adf0853-dengA.pdf) on the finer details. Even with the deluge blog posts on the subject-- there's one topic that does not get a lot of attention, and specifically a lot of code related to it: the connection between OLS, the delta method, and how those techniques connect to CUPED. Understanding their connection is critical when trying to apply more advanced techniques like [CUPED](https://www.exp-platform.com/Documents/2013-02-CUPED-ImprovingSensitivityOfControlledExperiments.pdf) (said "Cupid") with session level metrics. 
 
 In this post, we will empirically demonstrate the folllowing things:
-   1. The variance from the delta method equals the OLS variance with cluster robust standard errors.
-   2. The CUPED variance reduction can be achieved (and is equivalent to) using OLS (both one and two steps!)
-   3. How to use the CUPED approach with multiple covariates via OLS.
-   4. How to use CUPED when the randomization unit does not equal the unit of analysis (i.e., Appendix B of [Deng et. al](https://www.exp-platform.com/Documents/2013-02-CUPED-ImprovingSensitivityOfControlledExperiments.pdf).)
+   - The variance from the delta method equals the OLS variance with cluster robust standard errors.
+   - The CUPED variance reduction can be achieved (and is equivalent to) using OLS (both one and two steps!)
+   - How to use the CUPED approach with multiple covariates via OLS.
+   - How to use CUPED when the randomization unit does not equal the unit of analysis (i.e., Appendix B of [Deng et. al](https://www.exp-platform.com/Documents/2013-02-CUPED-ImprovingSensitivityOfControlledExperiments.pdf).)
 Implicitly, this post assumes you know that standard OLS is equivalent to a $$t$$-test when properly setup. If you are not sure of this, convince yourself of this by considering regressing $$Y\sim d$$ where $$d$$ is a binary indicator of being in the treatment and $$Y$$ is our variable of interest.
 
 ## Motivation
@@ -54,7 +54,7 @@ import pandas as pd
 from statsmodels.formula.api import ols
 ```
 
-# 1. OLS with clustered standard errors is equivalent to the variance from the delta method
+## OLS with clustered standard errors is equivalent to the variance from the delta method
 
  
 
@@ -168,10 +168,10 @@ np.sqrt(_delta_method(gbd.clicks[A], gbd.views.values[A])+_delta_method(gbd.clic
 
 
 
-### Note: Mind the size of $$n$$!
+### Mind the size of $$n$$!
 The delta method only applies when $$n$$ is large, and so for small $$n$$, the approximation may not hold. In fact, if you rerun this when $$n<1000$$, the delta method isn't a good approximation.
 
-# 2. The CUPED procedure is equivalent to just using OLS with a covariate
+## The CUPED procedure is equivalent to just using OLS with a covariate
 
 In particular, consider $$\hat Y_{cv}=Y-\theta (X-\mathbb{E}X)$$ from the CUPED paper, where $$\theta = \text{cov}(X,Y)/\text{var}(X)$$. Then, $$\theta$$ and the proper variance reduction can be gained by constructing the OLS formula $$Y\sim X+d+c$$ where $$X$$ is your pre-experiment covariate, $$d$$ is your treatment indicator, and $$c$$ is a constant.
 
@@ -407,13 +407,13 @@ np.sqrt((1-var_redux)*standard_error_none**2) # close !
 
 
 
-# CUPED when the randomization units are not equal to the analysis unit
+## CUPED when the randomization units are not equal to the analysis unit
 
 This situation occurs for session or page level metrics like the click through rate $$\left ( \frac{clicks}{sessions} \right )$$ when typically the A/B split occurs on users (i.e., you hash the user ID, the treatment is sticky by user, etc.) yet the metric does not contain users at all. As seen in the first example, this is a common situation to use the delta method. However, it's unclear at first glance how to do this with CUPED. In the paper by Deng et al., Appendix B sketches how to combine the delta method with CUPED.
 
 However, it is complicated, and it could be confusing to implement. In this case, you don't apply the delta method like in the typical $$t$$-test, but rather Deng et al. applies the delta method (i.e., Taylor's theorem) to linearize the terms in the variance and covariance and then passes $$n\to\infty$$ to get an approximation. This is the same process as deriving the normal delta method, but this time they use it to get a formula in terms of several user level metrics. So, at the end of the day, you don't calculate the traditional delta method at all for the variances, but rather you use their new formula given in Appendix B which I have recreated below.
 
-# $$\theta$$ calculation
+### $$\theta$$ calculation
 
 
 ```python
@@ -445,7 +445,7 @@ def calculate_theta(V):
     return theta
 ```
 
-# What is the variance of $$\hat{Y}_{cv}$$?
+### What is the variance of $$\hat{Y}_{cv}$$?
 
 By the definition of variance, $$var(\hat{Y}_{cv})= var(Y/N) + \theta^2 var(X/M)-2\theta cov(Y/N, X/M)$$. Each term has to be calculated via the delta method and summed together... unless we can use OLS!
 
@@ -466,7 +466,7 @@ def var_y_hat(V, theta):
     return (var_Y_div_N+(theta**2)*var_X_div_M-2*theta*cov)/V.n
 ```
 
-# Simulate it!
+### Simulate it!
 
 
 ```python
@@ -657,19 +657,19 @@ pd.DataFrame(
 
 
 
-# Discussion
+## Discussion
 
-## Why use Delta/CUPED at all?
+### Why use Delta/CUPED at all?
 
 So, now we have seen the myriad of ways that CUPED and OLS tie together with the delta method sprinkled in for good measure. The question remaining is why use the delta method at all, or the CUPED calculation, if OLS with situationally using cluster robust standard errors can do it for you. It's a good question, and the answer lies in performance. The full OLS calculation is more computationally expensive and cannot as easily be parallelized, and so scaling OLS to very large datasets could prove challenging. It's a similar reason as to why practitioners prefer to use the delta method instead of bootstrapping for a variance estimate. Both would yield a correct variance approximation, but one takes a much longer time to compute.
 
 I have also specifically avoided the questions of the validity of possibly non-IID data. This topic is covered at length in this [paper](https://alexdeng.github.io/public/files/wsdm2017-rup.pdf) from Deng et al. and may be a topic for a later post.
 
-## Multiple Covariates
+### Multiple Covariates
 
 In the CUPED paper, Deng et al. states "[t]he single control variate case can be easily generalized to include multiple variables." Although this may be true, I don't know if the solution is obvious if you are not currently well-versed in the mathematical background required-- specifically if you would like to have a formula for the variance. However, it is very straightforward to see that you can add as many covariates as you'd like to the OLS formula and still have your variance estimated for you. Otherwise, you'd have to find the least squared solution to your multiple covariate formula and likely use bootstrapping for the variance. Maybe this is worth exploring in a later post.
 
 
-# Acknowledgements
+## Acknowledgements
 
 I have to extend a thank you to many people who discussed and simulated this problem along side me to get to a coherent post: Kevin Foley who introduced me to this connection and championed OLS and the formula API from `statsmodels`, Tianwen Chen for discussing the various approaches and reviewing my simulations, and Chiara Capuano for helping me with reference hunting, giving feedback, and proofreading.

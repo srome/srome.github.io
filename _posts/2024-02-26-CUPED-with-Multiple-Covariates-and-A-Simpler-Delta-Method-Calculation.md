@@ -97,9 +97,9 @@ np.mean(theta.reshape((num_X,))-np.array(coefficients))
 
 
 
-## Wait? Why are they equal?
+### Detour on Gauss-Markov
 
-So, there was a little gap in the logic above. I did not mention why those two values should be equal in the first place, but I showed it happens in this case. It is actually due to the [Gauss-Markov Theorem](https://en.wikipedia.org/wiki/Gauss%E2%80%93Markov_theorem), which states that under a few assumptions on the data distribution, the ordinary least squares (OLS) estimator is unbiased and has the smallest variance.
+Wait? Why are they equal? So, there was a little gap in the logic above. I did not mention why those two values should be equal in the first place, but I showed it happens in this case. It is actually due to the [Gauss-Markov Theorem](https://en.wikipedia.org/wiki/Gauss%E2%80%93Markov_theorem), which states that under a few assumptions on the data distribution, the ordinary least squares (OLS) estimator is unbiased and has the smallest variance.
 
 Let's play that back to really grok it. I was coming up with a linear estimate for $$Y$$, in terms of a linear combination $$Y_{cv}$$ (so a linear estimator), and I was solving explicitly for coefficients ($$\theta$$) which minimized the variance. Since $$Y$$ _is_ already a linear combination, the OLS estimator will recover the coefficients of $$Y$$. Gauss-Markov says that the OLS solution is the _unique_ "best linear unbiased estimator", and so solving for a variance minimizing linear combination ($$Y_{cv}$$) another way will still yield the same coefficients.
 
@@ -320,7 +320,7 @@ pd.DataFrame(index=['t-test', 'CUPED', 'OLS'],data=
 
 
 
-# Non-User Level Metrics Considerations
+## Non-User Level Metrics Considerations
 
 If you have a non-user level metric, like the click through rate, the analysis from the first section is mostly unchanged. When you define $$Y_{cv}$$, we must account for those terms differently. Following Appendix B from the CUPED paper, let $$V_{i,+}$$ equal the sum of obervations of statistic $$V$$ for user $$i$$, $$n$$ the number of users and $$\frac{1}{n} \sum_i V_{i,+} = \bar{V}$$. Let $$M_{i,+}$$ be the number of visits for user $$i$$. Let $$X$$ be another user-level metric we will use for the correction. Then, we have the equation 
 $$\begin{equation}Y_{cv} = \bar{Y} - \theta_1 \left( \frac{\sum_{i} V_{i,+}}{\sum_{i} M_{i,+}} - \mathbb{E}{\frac{\sum_{i} V_{i,+}}{\sum_{i} M_{i,+}}} \right ) - \theta_2 ( \bar{X} - \mathbb{E}X).\end{equation}$$
@@ -341,7 +341,7 @@ cov\left (\frac{1}{\mu_{M}}\bar{V} - \frac{\mu_{V}}{\mu_{M}^2}\bar{M} , \bar{X}\
 \end{equation}$$
 At this point, you are able to calculate all the necessary terms and can sub this value in for the $$\partial d / \partial \theta_i$$ equation. 
 
-## Calculating the Delta Method Term the Easy Way
+### Calculating the Delta Method Term the Easy Way
 
 Using the previous presentation of the delta method, we can actually make our lives easier by replacing the vector $$\bar{V}/\bar{M}$$ with the delta estimate $$\frac{1}{\mu_{M}}\bar{V} - \frac{\mu_{V}}{\mu_{M}^2}\bar{M}$$ and then calculating the covariance, rather than applying any of the complicated delta formulae.
 
@@ -405,7 +405,7 @@ _delta_method(V, M)
 
 
 
-### How to calculate Sigma
+#### How to calculate Sigma
 
 How do we use this insight to make our $$\sigma$$ calculation easier? Simply replace any vector of the metric $$V/M$$ with the linearized formula $$\frac{\bar{V}}{\mu_{M}} - \frac{\mu_{V}}{\mu_{M}^2}\bar{M}$$ and take the covariance as usual.
 
@@ -452,6 +452,6 @@ np.cov(V,M)
 
 
 
-## Why haven't I seen this before?
+### Comments on the Simpler Derivation
 
-I have personally implemented the delta method formula multiple times before realizing I could linearize before calculating the covariance, and so I do not think this calculation trick is _obvious_. However, in hindsight, I don't understand why I never saw the delta method calculation presented this way. This next bit is pure speculation on my part, but it's likely that in the first paper on [applying the delta method](https://arxiv.org/pdf/1803.06336.pdf), the approach they used to prove the formula obscured this simplification and so they did not have this insight in that paper. However, the presentation of the delta method in the CUPED paper was more advanced and made this approach seem reasonable based on the elegance of their derivation. After seeing Appendix B, I had the suspicion that I could linearize and then compute. And it works!
+I have personally implemented the delta method formula multiple times before realizing I could linearize before calculating the covariance, and so I do not think this calculation is _obvious_. However, in hindsight, I wish I had seen the delta method calculation presented this way sooner! It turns out that this is a common approach in the field to calculate the delta method which is why it's not mentioned in the papers but it's available in several books, including [Art Owen's online book](https://artowen.su.domains/mc/#:~:text=quasi%2DMonte%20Carlo-,Chapters%201%20and%202,-1%20Introduction) in equation (2.29). Thanks to Deng (of Deng et al.) for sharing the reference.
