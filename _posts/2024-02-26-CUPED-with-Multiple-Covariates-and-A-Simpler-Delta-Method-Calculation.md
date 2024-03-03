@@ -452,6 +452,6 @@ np.cov(V,M)
 
 
 
-### Comments on the Simpler Derivation
+### Comments on the Simpler Calculation
 
-I have personally implemented the delta method formula multiple times before realizing I could linearize before calculating the covariance, and so I do not think this calculation is _obvious_. However, in hindsight, I wish I had seen the delta method calculation presented this way sooner! It turns out that this is a common approach in the field to calculate the delta method which is why it's not mentioned in the papers but it's available in several books, including [Art Owen's online book](https://artowen.su.domains/mc/#:~:text=quasi%2DMonte%20Carlo-,Chapters%201%20and%202,-1%20Introduction) in equation (2.29). Thanks to Deng (of Deng et al.) for sharing the reference.
+I have personally implemented the delta method formula multiple times before realizing I could linearize before calculating the covariance, and so I do not think this calculation is _obvious_. Upon rereading the original delta method paper, the same formula is _very briefly_ mentioned by Deng et al. in section 2.2 after equation (3) when they define $W_i$. In that section, they do not explicitly mention using the $W_i$ to calculate the variance, which is what I do above. However, it turns out that this is a common approach in the field to calculate the delta method, which is why it's not belabored in the papers as it's available in several books, including [Art Owen's online book](https://artowen.su.domains/mc/#:~:text=quasi%2DMonte%20Carlo-,Chapters%201%20and%202,-1%20Introduction) in equation (2.29). Thanks to Deng (of Deng et al.) for sharing the reference.
