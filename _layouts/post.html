@@ -14,6 +14,11 @@ layout: default
     >{{ page.date | date: "%B %e, %Y" }}</time
   >
 
+  <section class='toc'>
+  	<h4> Table of Contents</h4>
+  	{% include toc.html html=content %}
+  </section>
+
   <main class="entry">{{ content }}</main>
 
   <!---
