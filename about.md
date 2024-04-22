@@ -39,13 +39,13 @@ Harris, Isaac, and __Scott Rome__. 2017. “Near Field Imaging of Small
 Isotropic and Extended Anisotropic Scatterers.” *Applicable Analysis* 96
 (10): 1713–36.
 
-Cakoni, Fioralba, Shari Moskow, and __Scott Rome__. 2015. “The Perturbation
-of Transmission Eigenvalues for Inhomogeneous Media in the Presence of
-Small Penetrable Inclusions.” *Inverse Probl. Imaging* 9 (3): 725–48.
-
 Ambrose, David M, Jay Gopalakrishnan, Shari Moskow, and __Scott Rome__. 2017. “Scattering of Electromagnetic Waves by Thin High Contrast
 Dielectrics Ii: Asymptotics of the Electric Field and a Method for
 Inversion.” *Communications in Mathematical Sciences* 15 (4): 1041–53.
+
+Cakoni, Fioralba, Shari Moskow, and __Scott Rome__. 2015. “The Perturbation
+of Transmission Eigenvalues for Inhomogeneous Media in the Presence of
+Small Penetrable Inclusions.” *Inverse Probl. Imaging* 9 (3): 725–48.
 
 Note: On pure and applied mathematics publications, names are listed alphabetically by convention in defiance of other fields.
 
