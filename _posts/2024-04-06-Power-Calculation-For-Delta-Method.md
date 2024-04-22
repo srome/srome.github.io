@@ -8,7 +8,7 @@ tags:
 summary: Demonstration of a statistical power calculation when the variable in question requires the use of the delta method-- i.e., it is a ratio metric.
 ---
 
-In this post, we explore a situation typical of a website, where a user is allowed to view the page multiple times and may click on a button of interest on any visit. We would like to perform an A/B test on the non-user level metric, the click-through rate (CTR), defined via $$\text{total clicks}/\text{total page views}$$. In order to do the final analysis, we would need to estimate the variance for the variable via the delta method. However, what does that mean for a priori statistical power calculations?
+In this post, we explore a situation typical of a website, where a user is allowed to view the page multiple times and may click on a button of interest on any visit. We would like to perform an A/B test on the non-user level metric, the click-through rate (CTR), defined via  total clicks divided by total page views. In order to do the final analysis, we would need to estimate the variance for the variable via the delta method. However, what does that mean for a priori statistical power calculations?
 
 In my last post, we discussed the linearized form of the quotient $$\frac{\bar{V}}{\bar{M}} =\frac{\bar{V}}{\mu_{M}} - \frac{\mu_{V}}{\mu_{M}^2}\bar{M}.$$ We want to connect how to use this formula to derive a power calculation when using the delta method. This approach is useful for ratio metrics, and many session / page / non-user level metrics like the click-through rate.
 
