@@ -357,12 +357,20 @@ In our model, we are only predicting if the user will watch an item or not. It m
 
 ![pinterest](../images/deepnets/pinterest.png)
 
+The paper discusses implementing multiple tasks in Section 3.5:
+
+> We implement multi-task learning by combining positive labels
+from all the different tasks into the same training batch (Figure
+4). This technique is effective even when the query entities come
+from different modalities, the only difference being that the query
+embedding needs to be inferred with a different pretrained model.
+
 ### Off-Policy Reinforcement Learning 
 
 Minmin Chen, the author of [Top-K Off-Policy Correction for a REINFORCE Recommender System](https://research.google/pubs/top-k-off-policy-correction-for-a-reinforce-recommender-system/), said the model from the paper was the single biggest launch in terms of metric improvements at YouTube for that year in her talk on the topic. The recommender system is modeled as a Reinforcement Learning problem and they leverage techniques from the off-policy learning literature to correct for the "behavior policy" (i.e., their production system) which generated and biased their data. Another way to put this is that they use Inverse Propensity Scoring (IPS) in a clever way to correct for biases in their training data, allowing them to properly optimize their desired loss on their data distribution. In their approach, they learn the behavior policy as a separate task during training:
 
 ![reinforce](../images/deepnets/reinforce.png)
 
-One interesting note above is concatenate a `label context` to the final user state from the RNN, which is one way to implement the multiple tasks from the previous section.
+One interesting note above is to concatenate a `label context` to the final user state from the RNN is another way to implement a flavor of multiple tasks from the previous section.
 
 
