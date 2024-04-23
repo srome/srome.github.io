@@ -1,15 +1,15 @@
 ---
 layout: post
-title: An Implementation of the Candidate Generation Model from "Deep Neural Networks For YouTube Recommendations"
+title: Learning RecSys through Papers- Implementing a Candidate Generation Model
 tags:
 - Recommendations
 - Practical
 - RecSys
 - Machine Learning
-summary: A modern-ish implementation of the candidate generation step of the "Deep Neural Networks For YouTube Recommendations" by Covington et al.
+summary: A modern-ish implementation of the candidate generation step of the "Deep Neural Networks For YouTube Recommendations" by Covington et al. with a discussion of next steps from other papers.
 ---
 
-In this post, I will walk through an implementation of the candidate generation model from [Deep Neural Networks for YouTube](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf). This paper (and its talk) is jam-packed with all sorts of interesting practical recommendation system knowledge and is the perfect starting place for people hoping to understand large-scale recommendation systems. Below, I will implement the key components of the candidate generation model and train the model on the [MovieLens](https://grouplens.org/datasets/movielens/) dataset in PyTorch, a typical benchmark dataset in the RecSys space. There will also be a few modern flourishes and comments on new developments as applicable. I'll conclude with outlining a natural extension to this approach to predict multiple outcomes.
+Sometimes I'm asked how to start learning about recommender systems, and there's a few go-to papers I always mention; however, without a proper map, it could be alittle difficult for the uninitiated. So, to try to make a gentle introduction, I will walk through an implementation of the candidate generation model based on [Deep Neural Networks for YouTube](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf). This paper (and its talk) is jam-packed with all sorts of interesting practical recommendation system knowledge and is the perfect starting place for people hoping to understand large-scale recommendation systems. I will implement the key components of the candidate generation model and train the model on the [MovieLens](https://grouplens.org/datasets/movielens/) dataset in PyTorch, a typical benchmark dataset in the RecSys space. There will also be a few modern flourishes and comments on new developments as applicable. I'll conclude with outlining a natural extension to this approach to predict multiple outcomes.
 
 ## Candidate Generation
 
@@ -98,7 +98,9 @@ class DeepNetRecommender(nn.Module):
 
 ```
 
-As I mentioned before, we are using a sampled softmax approach. If your softmax output dimension is one-to-one with your item catalog, you can use functions build into PyTorch to sample indices. In our case, I'm using a simple Hash Embedding-inspired layer to accomplish the softmax output by dotting the item vector with the user embedding, and therefore, I have to explicitly pass in valid item IDs to ensure I am learning embeddings on the items I care about. Minor complication, but it makes the code sleaker for the blog post. In practice, this could be done in a variety of ways. My recommender net expects to score a variable list of indices for each record.
+As I mentioned before, we are using a sampled softmax approach. If your softmax output dimension is one-to-one with your item catalog, you can use functions build into PyTorch to sample indices. For very large item sets, typically a [LogQ correction](https://storage.googleapis.com/gweb-research2023-media/pubtools/pdf/6417b9a68bd77033d65e431bdba855563066dc8c.pdf) is used when sampling, which I skip in my implementation as the set of movies is not very large. 
+
+To create the sampled softmax, reusing the simplifieds hash embedding to accomplish the softmax output by dotting the item vector with the user embedding, and therefore, I have to explicitly pass in valid item IDs to ensure I am learning embeddings on the items I care about. In practice, it's more likely to see the output item vectors independent of the inputs.
 
 
 ```python
@@ -349,10 +351,20 @@ print('Predicted Top 20 Movies', '\n', movies.title.values[np.argsort(all_movies
      'Groundhog Day (1993)']
 
 
-## Extension: Predicting Multiple Outcomes
+## Extensions 
 
-In our model, we are only predicting if the user will watch an item or not. It may be that you want to predict various outcomes, like a click, a save, a buy, etc. One approach is modeling outcomes as prediction tasks demonstrated by Pinterest in their [ItemSage paper](https://arxiv.org/pdf/2205.11728.pdf). Here, they extend the basic model by adding an input term for the outcome they are predicting and embed that for each example. Then, they leverage both in-batch negatives and random negatives to train their model end-to-end. The in-batch negatives help the model learn the difference between popular items where the random negatives help to push down (i.e., rank lower) long-tail irrelevant items during inference. 
+### Predicting Multiple Outcomes
+
+In our model, we are only predicting if the user will watch an item or not. It may be that you want to predict various outcomes, like a click, a save, a buy, etc. One approach is modeling outcomes as prediction tasks demonstrated by Pinterest in their [ItemSage paper](https://arxiv.org/pdf/2205.11728.pdf). Here, they extend the basic model by adding an input term for the outcome they are predicting and embed that for each example. Then, they leverage both in-batch negatives and random negatives to train their model end-to-end. The in-batch negatives help the model learn the difference between popular items where the random negatives help to push down (i.e., rank lower) long-tail irrelevant items during inference. The [LogQ Correction](https://storage.googleapis.com/gweb-research2023-media/pubtools/pdf/6417b9a68bd77033d65e431bdba855563066dc8c.pdf) paper has more specific details on implementing the random negative sampling with in-batch negatives if needed. 
 
 ![pinterest](../images/deepnets/pinterest.png)
+
+### Off-Policy Reinforcement Learning 
+
+Minmin Chen, the author of [Top-K Off-Policy Correction for a REINFORCE Recommender System](https://research.google/pubs/top-k-off-policy-correction-for-a-reinforce-recommender-system/), said the model from the paper was the single biggest launch in terms of metric improvements at YouTube for that year in her talk on the topic. The recommender system is modeled as a Reinforcement Learning problem and they leverage techniques from the off-policy learning literature to correct for the "behavior policy" (i.e., their production system) which generated and biased their data. Another way to put this is that they use Inverse Propensity Scoring (IPS) in a clever way to correct for biases in their training data, allowing them to properly optimize their desired loss on their data distribution. In their approach, they learn the behavior policy as a separate task during training:
+
+![reinforce](../images/deepnets/reinforce.png)
+
+One interesting note above is concatenate a `label context` to the final user state from the RNN, which is one way to implement the multiple tasks from the previous section.
 
 
