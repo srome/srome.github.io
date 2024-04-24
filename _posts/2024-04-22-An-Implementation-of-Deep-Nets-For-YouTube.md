@@ -62,7 +62,8 @@ class DeepNetRecommender(nn.Module):
         self.embed1 = nn.Embedding(table_size, embed_dim)
         self.embed2 = nn.Embedding(table_size, embed_dim)
         self.embed3 = nn.Embedding(table_size, embed_dim)
-        # need to set seed for it to be the same, fuck
+
+        # need to set seed for it to be the same every load
         np.random.seed(182)
         self.embeds = [(getattr(self,'embed'+str(k)),np.random.choice(100000)) for k in range(1,1+n_embed)] # (layer, salt)
 
