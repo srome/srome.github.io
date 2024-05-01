@@ -17,7 +17,7 @@ A recommendation system is like a funnel that starts from the largest pool of co
 
 ![funnel](../images/deepnets/funnel.png)
 
-Our goal is to find items in the (possible) billions of possible items to present to the user to improve upon given business metrics.
+Our goal is to find items in the (possible) billions of possible items to present to the user to improve upon given business metrics. We do this by modeling the problem as "predicting what the user will watch" with watched items being positive examples and unwatched items being negatives. In the next sections, we will detail modeling decisions for various components and data preparation.
 
 
 ### Modeling
@@ -35,7 +35,7 @@ In my implementation, I will use a _simplified_ shared hash embeddings to repres
 
 A user will be represented by a list of past watched item IDs. You will notice in my implementation I allow variable length watch histories up to length `max_pad`=30. I do this by looping over the inputs, applying the embedding layer, and then averaging the inputs. Treating items as a "bag of words" is a common approach in early recommender systems, especially before the onset of Transformers and efficient RNNs. The approach is still extremely effective when combined with side features, such as in the Deep Nets Youtube paper and the [Wide and Deep paper](https://arxiv.org/pdf/1606.07792.pdf).
 
-My network architecture is closer a two-tower architecture, which became more common in later papers such as [this paper from YouTube in 2019](https://storage.googleapis.com/gweb-research2023-media/pubtools/pdf/6417b9a68bd77033d65e431bdba855563066dc8c.pdf). In the paper, they actually use in-batch items as their negatives but need to perform a correction to account for popular items showing up more often in their loss. I take this idea of the two-tower achitecture with shared embeddings and I remove the candidate tower and simply pass through the item embeddings to dot with each input item. The main difference is I do not use in-batch negatives but instead will sample negatives at random per example. You can see the two-tower architecture from the paper below and imagine that we pass the video embeddings directly through the right-hand side item tower to lead to the softmax term:
+My network architecture is closer to a two-tower architecture, which became more common in later papers such as [this paper from YouTube in 2019](https://storage.googleapis.com/gweb-research2023-media/pubtools/pdf/6417b9a68bd77033d65e431bdba855563066dc8c.pdf). In the paper, they actually use in-batch items as their negatives but need to perform a correction to account for popular items showing up more often in their loss. I take this idea of the two-tower achitecture with shared embeddings and I remove the candidate tower and simply pass through the item embeddings to dot with each input item. The main difference is I do not use in-batch negatives but instead will sample negatives at random per example. You can see the two-tower architecture from the paper below and imagine that we pass the video embeddings directly through the right-hand side item tower to lead to the softmax term:
 
 ![future](../images/deepnets/altarch.png)
 
@@ -106,7 +106,7 @@ class DeepNetRecommender(nn.Module):
 
 ```
 
-As I mentioned before, we are using a sampled softmax approach. If your softmax output dimension is one-to-one with your item catalog, you can use functions build into PyTorch to sample indices. To create the sampled softmax, I reuse the simplifieds hash embedding by dotting the item vector with the user embedding, and therefore, I have to explicitly pass in valid item IDs to ensure I am learning embeddings on the items I care about. In practice, it's more likely to see the output item vectors independent of the inputs for these types of models as it allows for easier sampling without knowing the identifiers of the items you are sampling.
+As I mentioned before, we are using a sampled softmax approach. If your softmax output dimension is one-to-one with your item catalog, you can use functions build into PyTorch to sample indices. To create the sampled softmax, I reuse the simplified hash embedding by dotting the item vector with the user embedding, and therefore, I have to explicitly pass in valid item IDs to ensure I am learning embeddings on the items I care about. In practice, it's more likely to see the output item vectors independent of the inputs for these types of models as it allows for easier sampling without knowing the identifiers of the items you are sampling.
 
 
 ```python
@@ -123,7 +123,7 @@ with torch.no_grad():
 
 ### Data Processing
 
-There are two approaches to modeling the data presented in the paper. I will focus on the one I find works best in practice-- the "predicting the future watch":
+There are two approaches to modeling the data presented in the paper. I will focus on the one I find works best in practice-- the "predicting the next/future watch":
 
 ![future](../images/deepnets/future.png)
 
@@ -190,7 +190,6 @@ This section is mostly boilerplate PyTorch code.
 ```python
 from torch.utils.tensorboard import SummaryWriter
 
-# default `log_dir` is "runs" - we'll be more specific here
 writer = SummaryWriter('runs/experiment_1')
 
 loss_fn = torch.nn.CrossEntropyLoss() # not equiv to Keras CCE https://discuss.pytorch.org/t/categorical-cross-entropy-loss-function-equivalent-in-pytorch/85165/11
