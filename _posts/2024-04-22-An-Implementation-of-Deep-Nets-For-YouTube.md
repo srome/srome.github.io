@@ -87,7 +87,7 @@ class DeepNetRecommender(nn.Module):
     def _embed_transform(self, y, max_pad):
         # embeds variable length inputs and translate them to the same size, [1,64] via averaging
         x = self.embed(y, max_pad)
-        return torch.sum(x,0) / x.shape[-1]
+        return torch.sum(x,0) / x.shape[0]
         
     def embed_and_avg(self, data, max_pad):
         stacked = torch.stack([self._embed_transform(x, max_pad) for x in data],0)
@@ -99,6 +99,8 @@ class DeepNetRecommender(nn.Module):
         to_rank = x['to_rank']
 
         lhs = self.embed_and_avg(inps, max_pad)
+        lhs = self.model(lhs)
+
         rhs = self.embed_stack(to_rank)
 
         output = torch.bmm(lhs, rhs.T.permute(-1,0,1))
