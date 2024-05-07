@@ -252,7 +252,7 @@ def train_one_epoch(epoch_index, tb_writer):
 ```python
 fixed_validation_set = [vdata for vdata in testloader]
 
-for epoch_number in range(5):
+for epoch_number in range(1):
 
     model.train()
     avg_loss = train_one_epoch(1, writer)
@@ -279,36 +279,12 @@ for epoch_number in range(5):
     torch.save(model, 'model.pt' +'_' +'_'.join([str(k[1]) for k in model.embeds]) +'.pt' ) # save model with hashes
 ```
 
-      batch 100 loss: 7.906899147033691
-      batch 200 loss: 6.511155738830566
-      batch 300 loss: 5.8766823625564575
-      batch 400 loss: 5.510434508323669
-      batch 500 loss: 5.327098736763
-    LOSS train 5.327098736763 valid 5.093747615814209
-      batch 100 loss: 5.077551589012146
-      batch 200 loss: 4.996584062576294
-      batch 300 loss: 4.923203115463257
-      batch 400 loss: 4.817293519973755
-      batch 500 loss: 4.782714262008667
-    LOSS train 4.782714262008667 valid 4.679518222808838
-      batch 100 loss: 4.733731045722961
-      batch 200 loss: 4.684506363868714
-      batch 300 loss: 4.6247485160827635
-      batch 400 loss: 4.632119636535645
-      batch 500 loss: 4.5745955848693844
-    LOSS train 4.5745955848693844 valid 4.506914138793945
-      batch 100 loss: 4.592239089012146
-      batch 200 loss: 4.5399451208114625
-      batch 300 loss: 4.557825055122375
-      batch 400 loss: 4.498872952461243
-      batch 500 loss: 4.51023015499115
-    LOSS train 4.51023015499115 valid 4.395785808563232
-      batch 100 loss: 4.4484495401382445
-      batch 200 loss: 4.454723727703095
-      batch 300 loss: 4.42571882724762
-      batch 400 loss: 4.452210640907287
-      batch 500 loss: 4.455954210758209
-    LOSS train 4.455954210758209 valid 4.345823287963867
+      batch 100 loss: 6.049025082588196
+      batch 200 loss: 4.822506718635559
+      batch 300 loss: 4.121425771713257
+      batch 400 loss: 3.6819806337356566
+      batch 500 loss: 3.45309770822525
+    LOSS train 3.45309770822525 valid 3.265143871307373
 
 
 ### Example Prediction
@@ -345,17 +321,17 @@ print('Predicted Top 20 Movies', '\n', movies.title.values[np.argsort(all_movies
 ```
 
     Predicted Top 20 Movies 
-     ['Star Wars: Episode V - The Empire Strikes Back (1980)'
-     'Back to the Future (1985)'
-     'Star Wars: Episode VI - Return of the Jedi (1983)' 'Matrix, The (1999)'
-     'Few Good Men, A (1992)' 'Princess Bride, The (1987)'
-     'Men in Black (a.k.a. MIB) (1997)' 'Aliens (1986)'
-     'Raiders of the Lost Ark (Indiana Jones and the Raiders of the Lost Ark) (1981)'
-     'Independence Day (a.k.a. ID4) (1996)' 'Romancing the Stone (1984)'
-     'Rising Sun (1993)' 'Star Wars: Episode I - The Phantom Menace (1999)'
-     'Willow (1988)' 'Terminator, The (1984)' 'L.A. Confidential (1997)'
-     'Contact (1997)' 'Sixth Sense, The (1999)' 'True Grit (1969)'
-     'Groundhog Day (1993)']
+     ['Gladiator (2000)' 'Green Mile, The (1999)' 'American Pie (1999)'
+     'Fight Club (1999)' 'Memento (2000)' 'Being John Malkovich (1999)'
+     'Toy Story 2 (1999)'
+     'Lord of the Rings: The Fellowship of the Ring, The (2001)'
+     'Matrix, The (1999)' 'Princess Mononoke (Mononoke-hime) (1997)'
+     'X-Men (2000)' 'American Beauty (1999)' 'Shrek (2001)'
+     'Requiem for a Dream (2000)' 'Cast Away (2000)'
+     'Ghostbusters (a.k.a. Ghost Busters) (1984)'
+     'Who Framed Roger Rabbit? (1988)' 'Airplane! (1980)'
+     'Crouching Tiger, Hidden Dragon (Wo hu cang long) (2000)'
+     'Sixth Sense, The (1999)']
 
 
 ## Extensions 
