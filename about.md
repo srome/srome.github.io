@@ -12,6 +12,9 @@ Hi, my name is Scott, and I'm a mathematics Ph.D. working in Machine Learning. P
 ## Selected Papers
 
 
+__Scott Rome__, Tianwen Chen, Raphael Tang, Luwei Zhou, and Ferhan Ture. "Ask Me Anything": How Comcast Uses LLMs to Assist Agents in Real Time. 2024. *Proceedings of the 47th International ACM SIGIR Conference on Research
+and Development in Information Retrieval.* 2827-2831.
+
 Kim, Yejin, __Scott Rome__, Kevin Foley, Mayur Nankani, Rimon Melamed,
 Javier Morales, Abhay Yadav, Maria Peifer, Sardar Hamidian, and H Howie
 Huang. 2024. “Improving Content Recommendation: Knowledge Graph-Based
