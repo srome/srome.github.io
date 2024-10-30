@@ -14,15 +14,17 @@ Consider the retrieval problem in a recommendation system. One way to model the 
 
 ## Motivation
 
-The softmax output is a natural choice for predicting the next click/watch as the softmax is meant to estimate the probability of an event
-$$\begin{equation}P(X=x)=\frac{ e^{-\mathcal{E}_\theta (x)} }{ \sum_{x^\prime \in X}  e^{-\mathcal{E}_\theta (x^\prime)}},\end{equation}$$
-where $$\mathcal{E}_\theta:=\mathcal{E}$$ represents the logit output of our neural network. To calculate $$P(x)$$, you need to calculate $$Z$$. If you sample negatives uniformly, this is easy to do, as the sampled estimate is unbiased. However, as models get more advanced, you won't only include features on the user but also in the candidate items. Indeed, this is the typical setup for a "two-tower" model like from this [paper](https://storage.googleapis.com/gweb-research2023-media/pubtools/6090.pdf) from Google will have an entire tower for the item embedding:  
+A two-tower model typically outputs the logits $$\varepsilon(x,y)$$ between the user and item embedding which are given by the two models $$u(x;\theta)$$ and $$v(y;\theta)$$ respectively, where $$x,y$$ are inputs representing query and item features and $$\theta$$ represents the parameters of the neural network. Typically, the model computes the dot product between the two embeddings, 
+$$\varepsilon(x,y)=  \langle u(x;\theta), v(y;\theta) \rangle. $$ For a fixed query (user) $$x$$, we will abuse notation and write $$\varepsilon(x,y):=\varepsilon(y)$$. The following graphic shows a typical setup for a "two-tower" model from [Google](https://storage.googleapis.com/gweb-research2023-media/pubtools/6090.pdf):  
 
 ![img](../images/ibn/twotower.png)
 
+  The softmax output is a natural choice for predicting the next click/watch as the softmax is meant to estimate the probability of an event
+$$\begin{equation}P(y|x)=\frac{ e^{-\varepsilon_\theta (x,y)} }{ \sum_{x^\prime \in X}  e^{-\varepsilon_\theta (x,x^\prime)}},\end{equation}$$
+where $$\varepsilon_\theta:=\varepsilon$$ represents the logit output of our neural network. To calculate $$P(y|x)$$, you need to calculate $$Z$$. If you sample negatives uniformly, this is easy to do, as the sampled estimate is unbiased. However, as models get more advanced, you won't only include features on the user but also in the candidate items. 
 
 Essentially, for each input user and each clicked item, you form the outer product where you dot each vector together to form the matrix $$[\text{sim}(u_i, v_j)]_{i,j=1}^n$$, where the similarity function could be the dot product between the user and item embedding. Here's an image from Spotify's blog post to illustrate the similarity matrix:
-![img](../images/ibn/similarity.png). Then, each row essentially forms the data for the softmax loss on the batch. 
+![img](../images/ibn/similarity.png) Each row essentially forms the data for the softmax loss on the batch. 
 
 This approach is efficient but comes with some downsides. First, positive examples will show up more often in your data, and so they will more often be used as negative examples, skewing their popularity. Second, some items which are never or rarely clicked must still be accounted for, or else they may end up being ranked highly by accident, as they've never been seen before. When you are finetuning language models, the second issue is not as big of a problem, but for recommender systems it is generally recommended to include some negative samples as well, which is done by both [Google](https://storage.googleapis.com/gweb-research2023-media/pubtools/6090.pdf) and [Pinterest](https://arxiv.org/pdf/2205.11728). For today's post, we will build the starter model without the addition of random negatives.
 
@@ -34,47 +36,49 @@ In the next section, we will derive and sketch the proof for the correction term
 
 ## LogQ Correction Term Derivation
 
-In order to avoid this problem of popular items being used as negatives, we will adjust the logits with a correction term that will properly estimate the gradient as if we calculated it over the whole dataset. Back to our $$P(X=x)$$ equation. We will assume $$x$$ is our (clicked) item from production logs $$X$$, and $$\mathcal{E}$$ is our logit output which depends on an unwritten model parameters $$\theta$$ and user $$u$$. For convenience, we define the normalizing constant $$Z= \sum_{x^\prime \in X}  e^{-\mathcal{E}_\theta (x^\prime)}$$.
+In order to avoid this problem of popular items being used as negatives, we will adjust the logits with a correction term that will properly estimate the gradient as if we calculated it over the whole dataset. Back to our $$P(y|x)$$ equation. We will assume $$y$$ is our (clicked) item from production logs $$X$$, and $$\varepsilon$$ is our logit output which depends on an unwritten model parameters $$\theta$$ and user $$u$$ plus their input data query data $$x$$. For convenience, we define the normalizing constant $$Z= \sum_{x^\prime \in X}  e^{-\varepsilon_\theta (x,x^\prime)}$$.
 If we consider the cross entropy loss (loosely following the notation in [Benigio 2007](https://www.iro.umontreal.ca/~lisa/pointeurs/importance_samplingIEEEtnn.pdf]) we have
 $$\begin{equation}
-\ell(x) = -\text{log} P(x) := -\text{log} \frac{ e^{-\mathcal{E}_\theta (x)} }{ \sum_{x^\prime \in X}  e^{-\mathcal{E}_\theta (x^\prime)}}.
+\ell(x,y) = -\text{log} P(y|x) := -\text{log} \frac{ e^{-\varepsilon_\theta (x,y)} }{ \sum_{x^\prime \in X}  e^{-\varepsilon_\theta (x,x^\prime)}}.
 \end{equation}$$
 The training process considers the gradient of this loss, which can be computed by using properties of the logarhythm and its derivative
 $$\begin{align}
-\nabla \ell(x) =& \nabla_\theta \left(  -\text{log} \frac{ e^{-\mathcal{E}_\theta (x)} }{ \sum_{x^\prime \in X}  e^{-\mathcal{E}_\theta (x^\prime)}} \right ) \\
- =& \nabla_\theta \left(  \mathcal{E}_\theta (x)  + \text{log} \sum_{x^\prime \in X}  e^{-\mathcal{E}_\theta (x^\prime)} \right ) \\
- = & \nabla_\theta  \mathcal{E}_\theta (x) + \frac{\nabla Z}{Z} \\
- =& \nabla_\theta \mathcal{E}_\theta (x) + \frac{\sum_{x^\prime\in X} \nabla e ^{-\mathcal{E}_\theta(x^\prime)}}{Z} \\
- =& \nabla_\theta \mathcal{E}_\theta (x) - \frac{\sum_{x^\prime\in X} e ^{-\mathcal{E}_\theta(x^\prime)}\nabla_\theta\mathcal{E}_\theta(x^\prime)}{Z} \\
-  =& \nabla_\theta \mathcal{E}_\theta (x) - \sum_{x^\prime\in X} P(x^\prime)\nabla_\theta\mathcal{E}_\theta(x^\prime).\\
+\nabla \ell(x,y) =& \nabla_\theta \left(  -\text{log} \frac{ e^{-\varepsilon_\theta (x,y)} }{ \sum_{x^\prime \in X}  e^{-\varepsilon_\theta (x,x^\prime)}} \right ) \\
+ =& \nabla_\theta \left(  \varepsilon_\theta (x,y)  + \text{log} \sum_{x^\prime \in X}  e^{-\varepsilon_\theta (x,x^\prime)} \right ) \\
+ = & \nabla_\theta  \varepsilon_\theta (x,y) + \frac{\nabla Z}{Z} \\
+ =& \nabla_\theta \varepsilon_\theta (x,y) + \frac{\sum_{x^\prime\in X} \nabla e ^{-\varepsilon_\theta(x,x^\prime)}}{Z} \\
+ =& \nabla_\theta \varepsilon_\theta (x,y) - \frac{\sum_{x^\prime\in X} e ^{-\varepsilon_\theta(x,x^\prime)}\nabla_\theta\varepsilon_\theta(x,x^\prime)}{Z} \\
+  =& \nabla_\theta \varepsilon_\theta (x,y) - \sum_{x^\prime\in X} P(x^\prime|x)\nabla_\theta\varepsilon_\theta(x,x^\prime).\\
 \end{align}$$
 
 Notice, the negative part of this equation is actually
-$$\begin{equation}N := \mathbb{E}_{x\sim X} \nabla_\theta \mathcal{E}(x).\end{equation}$$
+$$\begin{equation}N := \mathbb{E}_{x^\prime\sim X} \nabla_\theta \varepsilon(x,x^\prime).\end{equation}$$
 
-Using a technique called weighted importance sampling, we can actually use the minibatch to estimate $$N$$. For a minibatch $$Q$$, let $$Q(x)$$ be the probability that $$x\in Q$$. Then we define the weight $$w$$ as $$w(x)= e^{-\mathcal{E}(x)}/Q(x)$$. This weight has two important properties that we will leverage, namely
+Using a technique called weighted importance sampling, we can actually use the minibatch to estimate $$N$$. For a minibatch $$Q$$, let $$Q(x)$$ be the probability that $$x\in Q$$. Then we define the weight $$w$$ as $$w(x,y)= e^{-\varepsilon(x,y)}/Q(y)$$. This weight has two important properties that we will leverage, namely
 
-$$\begin{equation}\mathbb{E}_Q w(x) = \sum_{x\in X} \frac{e^{-\mathcal{E}(x)}}{Q(x)}Q(x)  = Z \sum_{x\in X} \frac{e^{-\mathcal{E}(x)}}{Z}= Z \end{equation}$$
+$$\begin{equation}\mathbb{E}_y w(x,y) = \sum_{y\in X} \frac{e^{-\varepsilon(x,y)}}{Q(y)}Q(y)  = Z \sum_{y\in X} \frac{e^{-\varepsilon(x,y)}}{Z}= Z \end{equation}$$
 
-since $$\sum_x P(x)= 1$$ by definition and for any $$g$$,
+since 
+$$\begin{equation}\sum_y P(y|x)=1\end{equation}$$ 
+by definition and for any $$g$$,
 
-$$\begin{equation}\mathbb{E}_Q w(x) g(x) = \sum_{x\in X} \frac{e^{-\mathcal{E}(x)}g(x)}{Q(x)}Q(x)  = Z \sum_{x\in X} \frac{e^{-\mathcal{E}(x)}g(x)}{Z}= Z \mathbb{E}_x g(x). \end{equation}$$
+$$\begin{equation}\mathbb{E}_y w(x,y) g(y) = \sum_{y\in X} \frac{e^{-\varepsilon(x,y)}g(x,y)}{Q(y)}Q(y)  = Z \sum_{y\in X} \frac{e^{-\varepsilon(x,y)}g(y)}{Z}= Z \mathbb{E}_y g(y). \end{equation}$$
 
 Moreoever, any [notes](https://www.uni-ulm.de/fileadmin/website_uni_ulm/mawi.inst.110/lehre/ss14/MonteCarloII/reading2.pdf) on weighted importance sampling will tell you as the size of the batch $$|Q|=n\to\infty$$, we have that the terms will converge to their means, which yields 
-$$\begin{equation}\frac{\frac{1}{n} \sum_{x^\prime\in Q} w(x^\prime) \nabla_\theta \mathcal{E}(x^\prime) }{\frac{1}{n} \sum_{x^\prime\in Q} w(x^\prime) } \to \frac{Z \mathbb{E}_x \nabla_\theta \mathcal{E}(x)}{Z}= N\end{equation}$$
+$$\begin{equation}\frac{\frac{1}{n} \sum_{x^\prime\in Q} w(x,x^\prime) \nabla_\theta \varepsilon(x,x^\prime) }{\frac{1}{n} \sum_{x^\prime\in Q} w(x,x^\prime) } \to \frac{Z \mathbb{E}_{x^\prime} \nabla_\theta \varepsilon(x,x^\prime)}{Z}= N\end{equation}$$
 by the [law of large numbers](https://en.wikipedia.org/wiki/Law_of_large_numbers). 
 
-Now this is pretty clever, but how do we fit this idea into our loss function? If we subtract from the logit $$\mathcal{E}$$ the *constant* for each item $$\text{log}Q(x)$$, then we will have what we want. We will now cosider the new loss function $$\ell^\prime$$ as 
-$$\begin{equation}\ell^\prime(x) = -\text{log} \frac{e^{-\mathcal{E}_\theta (x) -\text{log}Q(x)} }{\sum_{x^\prime\in Q} e^{-\mathcal{E}_\theta (x^\prime) -\text{log}Q(x^\prime)}},\end{equation}$$
+Now this is pretty clever, but how do we fit this idea into our loss function? If we subtract from the logit $$\varepsilon$$ the *constant* for each item $$\text{log}Q(x)$$, then we will have what we want. We will now cosider the new loss function $$\ell^\prime$$ as 
+$$\begin{equation}\ell^\prime(x,y) = -\text{log} \frac{e^{-\varepsilon_\theta (x,y) -\text{log}Q(y)} }{\sum_{x^\prime\in Q} e^{-\varepsilon_\theta (x,x^\prime) -\text{log}Q(x^\prime)}},\end{equation}$$
 
-where notice the denominator is now only summed over $$Q$$ instead of $$X$$. In the next calculation, we will liberally use the fact that $$\nabla_\theta log Q(x) = 0$$:
+where notice the denominator is now only summed over $$Q$$ instead of $$X$$. In the next calculation, we will liberally use the fact that $$\nabla_\theta log Q(y) = 0$$:
 
 $$\begin{align}
-\nabla \ell(x) =& \nabla_\theta \left(  -\text{log} \frac{ e^{-\mathcal{E}_\theta (x) -\text{log}Q(x)} }{ \sum_{x \in Q}  e^{-\mathcal{E}_\theta (x) -\text{log}Q(x)}} \right ) \\
- =& \nabla_\theta \left(  \mathcal{E}_\theta (x) + \text{log}Q(x)   + \text{log} \sum_{x^\prime \in Q}  e^{-\mathcal{E}_\theta (x^\prime)-\text{log}Q(x^\prime) } \right ) \\
-  =& \nabla_\theta  \mathcal{E}_\theta (x)  +   \frac{\sum_{x^\prime \in Q} \nabla_\theta e^{-\mathcal{E}_\theta (x^\prime)-\text{log}Q(x^\prime) }}{ \sum_{x^\prime \in Q}  e^{-\mathcal{E}_\theta (x^\prime)-\text{log}Q(x^\prime) } }  \\
- =& \nabla_\theta  \mathcal{E}_\theta (x)  -   \frac{\sum_{x^\prime \in Q} e^{-\mathcal{E}_\theta (x^\prime)-\text{log}Q(x^\prime) } \nabla_\theta(\mathcal{E}_\theta (x^\prime)-\text{log}Q(x^\prime)) }{ \sum_{x^\prime \in Q}  \frac{e^{-\mathcal{E}_\theta (x^\prime)}}{Q(x^\prime) } }\\
-  =& \nabla_\theta   \mathcal{E}_\theta (x)  -   \frac{\sum_{x^\prime \in Q} \frac{e^{-\mathcal{E}_\theta (x^\prime)}}{Q(x)}  \nabla_\theta\mathcal{E}_\theta (x^\prime)}{ \sum_{x^\prime \in Q}  \frac{e^{-\mathcal{E}_\theta (x^\prime)}}{Q(x^\prime) } }. 
+\nabla \ell(x,y) =& \nabla_\theta \left(  -\text{log} \frac{ e^{-\varepsilon_\theta (x,y) -\text{log}Q(y)} }{ \sum_{x \in Q}  e^{-\varepsilon_\theta (x,x^\prime) -\text{log}Q(x^\prime)}} \right ) \\
+ =& \nabla_\theta \left(  \varepsilon_\theta (x,y) + \text{log}Q(y)   + \text{log} \sum_{x^\prime \in Q}  e^{-\varepsilon_\theta (x,x^\prime)-\text{log}Q(x^\prime) } \right ) \\
+  =& \nabla_\theta  \varepsilon_\theta (x,y)  +   \frac{\sum_{x^\prime \in Q} \nabla_\theta e^{-\varepsilon_\theta (x,x^\prime)-\text{log}Q(x^\prime) }}{ \sum_{x^\prime \in Q}  e^{-\varepsilon_\theta (x,x^\prime)-\text{log}Q(x^\prime) } }  \\
+ =& \nabla_\theta  \varepsilon_\theta (x,y)  -   \frac{\sum_{x^\prime \in Q} e^{-\varepsilon_\theta (x,x^\prime)-\text{log}Q(x^\prime) } \nabla_\theta(\varepsilon_\theta (x,x^\prime)-\text{log}Q(x^\prime)) }{ \sum_{x^\prime \in Q}  \frac{e^{-\varepsilon_\theta (x,x^\prime)}}{Q(x^\prime) } }\\
+  =& \nabla_\theta   \varepsilon_\theta (x,y)  -   \frac{\sum_{x^\prime \in Q} \frac{e^{-\varepsilon_\theta (x,x^\prime)}}{Q(y)}  \nabla_\theta\varepsilon_\theta (x,x^\prime)}{ \sum_{x^\prime \in Q}  \frac{e^{-\varepsilon_\theta (x,x^\prime)}}{Q(x^\prime) } }. 
 \end{align}$$
 
 You can see that in the limit as $$n\to\infty$$ (multiplying the top and bottom by $$1/n$$), the second term will converge on the expectation from the original gradient term, thus the gradient will converge as well.
@@ -90,8 +94,15 @@ As there are no random negatives, when an item is not selected in the positive e
 
 #### Calculating Q(x)
 
-To calculate $$Q(x)$$ for a batch of size $$n$$, you could simply estimate the probability directly by calculating statistics over the entire corpus. In particular, if $$p(x)$$ is the probability to select $$x$$ from your dataset, then $$Q(x) = 1 - (1-p(x))^n$$. As this can be impractical with large data, the [original LogQ Paper by Yi et. al](https://storage.googleapis.com/gweb-research2023-media/pubtools/5716.pdf) suggested a streaming approach, which was nicely implemented in this [blog](https://medium.com/@iitmdinesh/lsh-based-sampling-bias-correction-for-retrieval-e28fb12caf97). 
+To calculate the sampling probability $$Q(x)$$ for a batch of size $$n$$, you could simply estimate the probability directly by calculating statistics over the entire corpus. In particular, if $$p(x)$$ is the probability to select $$x$$ from your dataset, then $$Q(x) = 1 - (1-p(x))^n$$. As this can be impractical with large data, the [original LogQ Paper by Yi et. al](https://storage.googleapis.com/gweb-research2023-media/pubtools/5716.pdf) suggested a streaming approach, which was nicely implemented in this [blog](https://medium.com/@iitmdinesh/lsh-based-sampling-bias-correction-for-retrieval-e28fb12caf97). 
 
+There is one question of how to calculate $$Q(x)$$ when $$x$$ is the positive label of the example. The original [LogQ paper](https://storage.googleapis.com/gweb-research2023-media/pubtools/6090.pdf) does not mention this caveat when the approach is introduced. Philosophically, as $$x$$ is the positive label, one may assume $$Q(x)=1$$. However, in the [TensorFlow Recommenders SamplingProbabilityCorrection class](https://github.com/tensorflow/recommenders/blob/36a1836b428732d8fd5fe8bf188b660650ad451c/tensorflow_recommenders/layers/loss.py#L157), $$\text{log}Q(x)$$ is subtracted from the logit without any special considerations for the positive label. 
+
+Practically, subtracting a large negative number from the logit which could impact training when the label is the $$1$$ for the softmax. Additionally, later in the LogQ paper, in equation (5) the author appear to grant special treatment to the positive label when the sum does not include the case of $$i = j$$:
+
+![img](../images/ibn/paper.png)
+
+This formula coincides with setting $$Q(x)=1$$ which would imply its log is $$0$$. Other implementations, such as the blog mentioned above, also sets the positive label's log equal to $$0$$. We will also follow this approach in our implementation.
 
 #### Removing Duplicates In Batches
 
