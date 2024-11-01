@@ -21,12 +21,12 @@ $$\varepsilon(x,y)=  \langle u(x;\theta), v(y;\theta) \rangle. $$ For a fixed qu
 
   The softmax output is a natural choice for predicting the next click/watch as the softmax is meant to estimate the probability of an event
 $$\begin{equation}P(y|x)=\frac{ e^{-\varepsilon_\theta (x,y)} }{ \sum_{x^\prime \in X}  e^{-\varepsilon_\theta (x,x^\prime)}},\end{equation}$$
-where $$\varepsilon_\theta:=\varepsilon$$ represents the logit output of our neural network. To calculate $$P(y|x)$$, you need to calculate $$Z$$. If you sample negatives uniformly, this is easy to do, as the sampled estimate is unbiased. However, as models get more advanced, you won't only include features on the user but also in the candidate items. 
+where $$\varepsilon_\theta:=\varepsilon$$ represents the logit output of our neural network. To calculate $$P(y|x)$$, you need to calculate the denominator which usually is prohibitively computationally expensive. If you sample negatives uniformly, this is easy to do, as the sampled estimate is unbiased. However, as models get more advanced, you won't only include features on the user but also on the candidate items. 
 
-Essentially, for each input user and each clicked item, you form the outer product where you dot each vector together to form the matrix $$[\text{sim}(u_i, v_j)]_{i,j=1}^n$$, where the similarity function could be the dot product between the user and item embedding. Here's an image from Spotify's blog post to illustrate the similarity matrix:
-![img](../images/ibn/similarity.png) Each row essentially forms the data for the softmax loss on the batch. 
+Essentially, for each input user and each clicked item, you form the outer product where you dot each vector together to form the matrix $$[\text{sim}(u_i, v_j)]_{i,j=1}^n$$, where the similarity function could be the dot product between the user and item embedding. Here's an image from Spotify's blog post on contrastive learning of language models to illustrate the similarity matrix:
+![img](../images/ibn/similarity.png) Each row forms the data for the softmax loss on the batch. Notice, the technique for in-batch negatives for recommender systems and contrastive learning for language models is similar except the language model case tends to form a so-called "Siamese network" where both towers are the same network (e.g., a BERT model).
 
-This approach is efficient but comes with some downsides. First, positive examples will show up more often in your data, and so they will more often be used as negative examples, skewing their popularity. Second, some items which are never or rarely clicked must still be accounted for, or else they may end up being ranked highly by accident, as they've never been seen before. When you are finetuning language models, the second issue is not as big of a problem, but for recommender systems it is generally recommended to include some negative samples as well, which is done by both [Google](https://storage.googleapis.com/gweb-research2023-media/pubtools/6090.pdf) and [Pinterest](https://arxiv.org/pdf/2205.11728). For today's post, we will build the starter model without the addition of random negatives.
+This approach is efficient but comes with some downsides. First, positive examples will show up more often in your data, and so they will more often be used as negative examples, skewing their popularity. Second, some items which are never or rarely clicked must still be accounted for, or else they may end up being ranked highly by accident, as they've never been seen before. Contrastive learning approaches for finetuning language models usually are not impacted by the second issue, but for recommender systems it is generally recommended to include some negative samples as well, which is done by both [Google](https://storage.googleapis.com/gweb-research2023-media/pubtools/6090.pdf) and [Pinterest](https://arxiv.org/pdf/2205.11728). For today's post, we will build the starter model without the addition of random negatives.
 
 In order to correct for the first problem, we can apply the LogQ Correction ([Sampling-Bias-Corrected Neural Modeling for Large Corpus Item Recommendations
 ](https://storage.googleapis.com/gweb-research2023-media/pubtools/5716.pdf)) to correct for any probabilistic discrepencies that arise from popular items showing up more often in training. This allows us to efficiently use our minibatch examples while maintaining the proper gradient for training. 
@@ -64,7 +64,7 @@ by definition and for any $$g$$,
 
 $$\begin{equation}\mathbb{E}_y w(x,y) g(y) = \sum_{y\in X} \frac{e^{-\varepsilon(x,y)}g(x,y)}{Q(y)}Q(y)  = Z \sum_{y\in X} \frac{e^{-\varepsilon(x,y)}g(y)}{Z}= Z \mathbb{E}_y g(y). \end{equation}$$
 
-Moreoever, any [notes](https://www.uni-ulm.de/fileadmin/website_uni_ulm/mawi.inst.110/lehre/ss14/MonteCarloII/reading2.pdf) on weighted importance sampling will tell you as the size of the batch $$|Q|=n\to\infty$$, we have that the terms will converge to their means, which yields 
+Moreover, any [notes](https://www.uni-ulm.de/fileadmin/website_uni_ulm/mawi.inst.110/lehre/ss14/MonteCarloII/reading2.pdf) on weighted importance sampling will show that as the batch size $$|Q|=n\to\infty$$, the terms will converge to their respective means, yielding
 $$\begin{equation}\frac{\frac{1}{n} \sum_{x^\prime\in Q} w(x,x^\prime) \nabla_\theta \varepsilon(x,x^\prime) }{\frac{1}{n} \sum_{x^\prime\in Q} w(x,x^\prime) } \to \frac{Z \mathbb{E}_{x^\prime} \nabla_\theta \varepsilon(x,x^\prime)}{Z}= N\end{equation}$$
 by the [law of large numbers](https://en.wikipedia.org/wiki/Law_of_large_numbers). 
 
@@ -488,4 +488,4 @@ print('Predicted Top 20 Movies', '\n', movies.title.values[np.argsort(all_movies
      "Schindler's List (1993)" 'Mask, The (1994)'
      "One Flew Over the Cuckoo's Nest (1975)"]
 
-For fun, you can compare this list to the previous post on recommender system's list.
+For fun, you can compare this list to the previous post on recommender system's list. A more robust evaluation would involve calculating Recall @ K for various K's, which is typical for retrieval models and can be seen in the papers linked above.
