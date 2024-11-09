@@ -127,7 +127,6 @@ import numpy as np
 
 ```python
 EMBED_TABLE_SIZE = 1000
-device = 'cpu'
 hash_f = lambda x: int(hashlib.md5(x.encode('utf-8')).hexdigest(),16) % EMBED_TABLE_SIZE
 ```
 
@@ -411,8 +410,8 @@ for epoch_number in range(epochs+1):
             vinputs, vlabels = vdata
             voutputs = model({'history': vinputs, 'to_rank':vlabels})
             # note output is not normalized, and we care about the similarity without log probabilities
-            default_label = torch.zeros((voutputs[0].shape[0]), dtype=torch.long).to(mps_device)
-            vloss = val_loss(torch.nn.functional.normalize(voutputs[0]) @ torch.nn.functional.normalize(voutputs[1]).T, default_label) # dot em
+            range_labels = torch.arange(0, voutputs[1].size(0), device=mps_device)
+            vloss = val_loss(torch.nn.functional.normalize(voutputs[0]) @ torch.nn.functional.normalize(voutputs[1]).T, range_labels) # dot em
             running_vloss += vloss
 
     avg_vloss = running_vloss / (i + 1)
