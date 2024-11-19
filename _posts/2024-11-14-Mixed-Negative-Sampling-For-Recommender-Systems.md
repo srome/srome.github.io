@@ -10,7 +10,7 @@ summary: Another modern-ish implementation of the candidate generation step of a
 ---
 
 
-In our previous posts, we walked through the sampled softmax and in-batch negatives as loss functions for training a retrieval model. In this post, we will explore the best of both worlds in the so-called mixed negative sampling. This method will prove the be the most data efficient and yield the best performance of the previous two methods. The post contains a new implementation of all three methods which will allow all three to be trained from (approximately) the same data loader and compared.
+In our previous posts, we walked through the sampled softmax and in-batch negatives as loss functions for training a retrieval model. In this post, we will explore the best of both worlds in the so-called mixed negative sampling. This method will prove the to be the most data efficient and yield the best performance of the previous two methods. The post contains a new implementation of all three methods which will allow all three to be trained from (approximately) the same data loader and compared.
 
 # Motivation
 
@@ -28,11 +28,14 @@ As there is not really any additional math to explore, the only open question is
 
 As we have two possible ways to sample an item (in-batch negative or random sample), my take is that the final probability for their $$Q^*$$ must be the overall probability an item appears in the batch from either of these sampling approaches. To calculate this, you can combine the two possibilities. As usual, we will calculate the probability the item will not appear in the batch and then take the complement. 
 
-Define $$\eta$$ to be the probability the item appears as a positive example and $$\gamma$$ as it's uniform random probability. Then for a batch size of $$B$$ and $$B^\prime$$ random negatives, the probability you do not sample the item via in-batch items is $$(1-\eta)^B$$ and similarly for your random negatives it is $$(1-\gamma)^{B^\prime}$$. As these two samples are made independently, your total probability to not sample the item is $$(1-\eta)^B(1-\gamma)^{B^\prime}$$. Thus, the probability to not sample the item in the batch is $$1-(1-\eta)^B(1-\gamma)^{B^\prime}.$$
+Define $$\eta$$ to be the probability the item appears as a positive example and $$\gamma$$ as its uniform random probability. Then for a batch size of $$B$$ and $$B^\prime$$ random negatives, the probability you do not sample the item via in-batch items is $$(1-\eta)^B$$ and similarly for your random negatives it is $$(1-\gamma)^{B^\prime}$$. As these two samples are made independently, your total probability to not sample the item is $$(1-\eta)^B(1-\gamma)^{B^\prime}$$. Thus, the probability to not sample the item in the batch is $$1-(1-\eta)^B(1-\gamma)^{B^\prime}.$$ 
 
 Like in the previous post, from the formula one can see that they again define $$\text{log}(Q^*)=1$$ for items in the batch when on their respective row. This will be clear in the implementation as we fill the diagonal of our log probability matrix with zeros.
 
-With that said, [Pinterest](https://arxiv.org/pdf/2205.11728) on the other hand uses a positive and negative loss term, where the negative term only contains the random negatives. In this case, they calculate the probability as a simple $$1/\vert X\vert$$ where $$X$$ is the item set:
+The derivation above assumes sampling the unigram and uniform distributions with replacement. In my implementation, I do not allow for for duplicates in the batch, which could impact the probabilities. In fact, the uniform sampling in my code actually samples from all items excluding the items in the batch, and it samples without replacement to avoid duplicates. However, for large item sets, the probabilities either way will be close and not make a big difference. 
+
+
+With that said, [Pinterest](https://arxiv.org/pdf/2205.11728) on the other hand uses a positive and negative loss term, where the negative term only contains the random negatives. In this case, they calculate the probability as a simple $$1/\vert X\vert$$ where $$X$$ is the set of all items:
 
 ![img](../images/mns/pintq.png)
 
@@ -47,7 +50,7 @@ L_{S_{Neg}} &= -\frac{1}{\vert N\vert }\sum_{i=1}^{\vert N\vert } \frac{ e^{\lan
 \end{align}
 $$
 
-Moreover, they claim this improves the overall performance, but how could that be if the term drops out? Notice this term now a sampled softmax term for their objective function, which is probably why it is effective. In the Mixed Negative sampling paper, their denominator does not actually use $$\text{log}Q(y\vert x)$$ or $$\text{log}Q(y)$$ as written in (4) above, but it actually uses a new distribution $$\text{log}Q^*(y\vert x)$$ where $$Q^*$$ is the "mixture" of the two distributions. The probability theoretically was explained in a previous paragraph.
+Moreover, they claim this improves the overall performance, but how could that be if the term drops out? Notice this term is now a sampled softmax term for their objective function, which is probably why it is effective. In the Mixed Negative sampling paper, their denominator does not actually use $$\text{log}Q(y\vert x)$$ or $$\text{log}Q(y)$$ as written in (4) above, but it actually uses a new distribution $$\text{log}Q^*(y\vert x)$$ where $$Q^*$$ is the "mixture" of the two distributions. The probability theoretically was explained in a previous paragraph.
 
 
 ### Sampling Once Per Batch
@@ -62,13 +65,13 @@ In my previous post on the sampled softmax, I lazily just sampled for every row,
 
 ### Evaluation
 
-This time, we are going to go with a more typical and robust valiation metric, Recall @ K. For this, we take the model and apply it to all the item in our universe. From there, we take the Top K items and see if the item clicked in the positives set was found in the Top K. This will allow us to more clearly show the benefits of including softmax and inbatch negatives.
+This time, we are going to go with a more typical and robust validation metric, Recall @ K. For this, we take the model and apply it to all the item in our universe. From there, we take the Top K items and see if the item clicked in the positives set was found in the Top K. This will allow us to more clearly show the benefits of including softmax and inbatch negatives.
 
 To compare, we do a quick re-implementation of the previous two blog posts, with slight enhancements, to allow us to do a comparison. Interestingly enough, in the [TensorFlow sampling guide](https://www.tensorflow.org/extras/candidate_sampling.pdf), they include the LogQ correction on their sampled softmax to include the possibility of other sampling methods rather than just uniform sampling.
 
 ### Productionizing
 
-In the code below, I basically output the "user" and "item" tower embeddings from a single model and use that in my loss function. If I were to do this for production, the code here would serve more as my training harness. In my code, I trivial reuse the item embeddings as the item tower-- a valid but simple approach. In reality, I'd define a user and item tower and then combine them during training like you see below. Then for production I'd save each model separately, using the user tower at runtime (or precomputed + stored in a cache) and the item tower would be used during data processing and stored in a vector database.
+In the code below, I basically output the "user" and "item" tower embeddings from a single model and use that in my loss function. If I were to do this for production, the code here would serve more as my training harness. In my code, I trivially reuse the item embeddings as the item tower-- a valid but simple approach. In reality, I'd define a user and item tower and then combine them during training like you see below. Then for production I'd save each model separately, using the user tower at runtime (or precomputed + stored in a cache) and the item tower would be used during data processing and stored in a vector database.
 
 ## PyTorch Code
 
@@ -121,7 +124,7 @@ max_pad=30
 
 ```python
 d['click'] = d['rating'] >= 3
-dd = d[d['click'] > 0].groupby('userId', as_index=False).movieId.apply(list) # assumes final list is in order
+dd = d[d['click'] > 0].groupby('userId', as_index=False).movieId.apply(list) # assumes final user history is in order of time
 dd.set_index('userId',inplace=True)
 dd=dd[dd.movieId.apply(len) > max_pad+2] # minimum number of movies per user
 ```
