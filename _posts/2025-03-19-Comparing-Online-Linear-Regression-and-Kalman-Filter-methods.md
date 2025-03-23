@@ -35,10 +35,9 @@ $$
 
 This can also be derived by assuming a prior and deriving a Bayesian update as in [here](https://arxiv.org/pdf/2305.07764). The solution will require collecting terms of the exponent and completing the matrix square. It is an annoying calculation.
 
-We will derive an online update formula for the solution. There is an identify (see an intuitive proof [here](https://gregorygundersen.com/blog/2020/07/17/matmul/)) that says
+We will derive an online update formula for the solution. There is an identity (see an intuitive proof [here](https://gregorygundersen.com/blog/2020/07/17/matmul/)) that says
 $$X^TX = \sum_{i=1}^{m} x_i x_i^T$$
-where $$x_i$$ is the i-th row of $$X$$. Note that $$X^T Y=\sum_{i=1}^m x_i y_i$$.
-Let 
+where $$x_i$$ is the i-th row of $$X$$. (Recall, the row's of $X$ correspond to a single training example.) Additionally, by definition, we have $$X^T Y=\sum_{i=1}^m x_i y_i$$. Now, we let 
 
 $$\Sigma_t := \epsilon I_d + \sum_{i=1}^{t} x_i x_i^T$$
 
@@ -104,8 +103,8 @@ which implies there will be a slightly different solution to the OLR model.
 An intuitive way to derive the Kalman Filter update is by starting at Bayes theorem. Unlike OLR above, the variance of the residuals of the estimate is explicitly found in the formula. Let $$D_t:= \{ (x_i,y_i) \}_{i \leq t}$$. From Bayes theorem, we can write
 $$p(\beta | D_t) \propto p(y_t | \beta, D_{t-1}) p(\beta | D_{t-1}).$$
 
-Following the notation of [the wiki](https://en.wikipedia.org/wiki/Kalman_filter), We can assume 
-$$\beta| D_{t-1} \sim \mathbf{N}(\beta_{t-1}, P_{t-1})$$. Moreover, by assumption we assume $$y | D_{t-1} \sim \mathbf{N}(X^T \beta, \sigma^2 I_{id})$$. of the residuals of the estimate play an explicit role in the update formula. We can look at the exponents (by taking the log) to see 
+Following the notation of [the wiki](https://en.wikipedia.org/wiki/Kalman_filter), we can assume 
+$$\beta| D_{t-1} \sim \mathbf{N}(\beta_{t-1}, P_{t-1})$$. Moreover, by assumption, $$y | D_{t-1} \sim \mathbf{N}(X^T \beta, \sigma^2 I_{id})$$, and so due to prsence of $\sigma$ in the formula, we immediately see that the variance of the residuals play an explicit role in the update formula, which was not the case in online linear regression. If we now look at the exponents (by taking the log), we can see 
 
 $$\text{log} p(\beta | D_t) \propto (y_t - X_t^T \beta)^T (\sigma^2 I_{id})^{-1} (y_t - X_t^T \beta) + (\beta - \beta_{t-1})^T P_{t-1}^{-1} (\beta - \beta_{t-1}).$$
 
@@ -232,13 +231,13 @@ The Kalman filter should be beneficial when the distibution is non-stationary. A
 
 When distributions are non-stationary, the Kalman filter can explicitly (through the "Kalman gain" term $$K$$) weight the new observation of the old weights higher in the final formula. In this next experiment, we will compare the learned weights on a moving distribution.
 
-For the test of $n$ rounds, we will distribute the data via 
+For the test of $$n$$ rounds, we will distribute the data via 
 
 $$y_t \sim \mathbf{N} \left ( 2 \text{sin}\left (\frac{\pi t}{n}\right ) x_1 + \text{cos}\left (\frac{\pi t}{n}\right )x_2, .1^2\right )$$
 
 $$ x_1,x_2 \sim \mathbf{U}(-1,1)$$
 
-You may noticed we increased the variance from before.
+You may noticed we changed the variance from the previous example.
 
 
 ```python
@@ -374,11 +373,11 @@ np.mean(np.array(residuals[-5000:])**2), np.mean(np.array(residuals2[-5000:])**2
     (1.83595273951509, 1.2811797655774746)
 
 
-Where the Kalman Filter MSE for end of the experiment on the right is clearly lower.
+Where the Kalman Filter MSE on the right is clearly lower at the end of the experimental time period.
 
 ## Impact of Retraining
 
-When drift becomes too big, it may make sense to retrain in batch instead of hope for the model to adapt over time. When we institute this process, we see limited difference between the two methods.
+When drift becomes too large, it may make sense to retrain in batch instead of hoping for the model to adapt over time. When we institute this process, we see limited difference between the two methods.
 
 
 ```python
@@ -468,4 +467,4 @@ np.mean(np.array(residuals3)**2), np.mean(np.array(residuals4)**2)
 
 
 
-From this, we can see that if you have the capability to retrain on a smaller time scale, for this very linear toy problem, it's better to retrain more often from scratch vs. online learning for highly non-stationary dynamics. For pure online learning, there are cases where Kalman filters can be helpful as seen in this example. In more static dynamics, you do not get a striking difference between the two methods.
+From this, we can see that if you have the capability to retrain on a smaller time scale, for this very linear toy problem, it's better to retrain more often from scratch vs. online learning for highly non-stationary dynamics. For pure online learning, there are cases where Kalman filters can be helpful as seen in this example. In more stationary dynamics, you do not get a striking difference between the two methods.
