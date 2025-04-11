@@ -10,7 +10,7 @@ summary: An explanation of how YouTube uses weighted logistic regression to pred
 ---
 
 
-In reading the [YouTube Paper](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf), I came across one technical section that seemed very subtle and was not readily apparent why it was true: the watch time estimation using weighted logistic regression. It's easy to gloss over this details, but as it turns out, [many](http://bourneli.github.io/recommendation/2020/07/19/notes-of-youtube-recommendation-2016.html) [people](https://zhuanlan.zhihu.com/p/61827629) [before](https://arxiv.org/pdf/2206.06003) me were curious about this section as well.  The previous links have already explored one view into the why behind this formula, but I would like to formalize the process and explain it end to end.
+In reading the [YouTube Paper](https://static.googleusercontent.com/media/research.google.com/en//pubs/archive/45530.pdf), I came across one technical section that seemed very subtle and was not readily apparent why it was true: the watch time estimation using weighted logistic regression. It's easy to gloss over this detail, but as it turns out, [many](http://bourneli.github.io/recommendation/2020/07/19/notes-of-youtube-recommendation-2016.html) [people](https://zhuanlan.zhihu.com/p/61827629) [before](https://arxiv.org/pdf/2206.06003) me were curious about this section as well.  The previous links have already explored one view into the why behind this formula, but I would like to formalize the process and explain it end to end.
 
 ### Derivation
 
@@ -44,7 +44,7 @@ $$\text{New Odds} \approx \frac{w}{N} = \mathbb{E}(\text{watch time}).$$
 
 ### A More Formal Proof
 
-Although the above argument makes sense to motivate the approach, I wouldn't know what this does to the individual predictions, etc., from this argument. It is illuminating if we start from first principles and see why the weighted logistic regression training process will create this outcome. First, they are taking the dataset $$D=\{ (x,y) \}$$ and create a new distribution by introducing weights. In particular, they are changing the probability distribution of training to follow a new one we will denote $$q$$. They define
+Although the above argument makes sense to motivate the approach, this argument does not imply what happens to the individual predictions. It is illuminating if we start from first principles and see why the weighted logistic regression training process will create this outcome. First, they take the dataset $$D=\{ (x,y) \}$$ and create a new distribution by introducing sampling weights. In particular, they are changing the probability distribution of training to follow a new one we will denote $$q$$. They define
 
 $$q(x,y) = \frac{w(x,y) p(x,y)}{Z}.$$
 
@@ -58,7 +58,7 @@ With this definition, we can see that the loss function $$\ell(x,y)$$ for traini
 
 $$\mathbb{E}_q( \ell ) = \sum_{x,y} \ell(x,y)q(x,y) = \sum_{x,y} w(x,y) \ell(x,y) p(x,y) = \mathbb{E}_p(w \ell)$$
 
-where the normalization constant can be dropped/ignored as it will carry through the formulas as a constant and won't impact training due to the learning rate choice. So, if we weight each example in the loss function by $$w(x,y)$$ then we will optimize the loss based on the $$q$$ distribution.
+where the normalization constant can be dropped/ignored as it will carry through the formulas as a constant and won't impact training due to the learning rate choice. (Why? As the constant multiplies to all terms of the loss, it will also be a multiplicative factor against the gradient, which is multiplied by the learning rate and thus can be absorbed into the learning rate term.) So, if we weight each example in the loss function by $$w(x,y)$$ then we will optimize the loss based on the $$q$$ distribution.
 
 Let's look at what this weighting does to the individual prediction level. Since logistic regression learns the log-odds for each data point, we can see the impact of learning this new distribution:
 
@@ -80,7 +80,7 @@ $$ \frac{q(y=1)}{q(y=0)} =
 =\frac{ \sum_x w(x,1) p(y=1|x)p(x) }{ p(y=0) }$$
 
 by multiplying by $$1=p(x)/p(x)$$.
-This next part is alittle quirky but it works out. Since we are really looking at the sampled dataset $$D$$, $$p(x)\approx 1/N$$. Treating this as a constant we can pull this out and conclude that,
+This next part is a little quirky but it works out. Since we are really looking at the sampled dataset $$D$$, $$p(x)\approx 1/N$$. Treating this as a constant we can pull this out and conclude that,
 $$
 \begin{align}
 \sum_x w(x,1) p(y=1|x)p(x) &= \frac{1}{N}\sum_{\text{users}} (\text{expected watch time per user})\\ &= \frac{1}{N} \text{(Total watch time}) \\ &= \mathbb{E}(w).
