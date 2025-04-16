@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Comparing Online Linear Regression and Kalman Filter Approaches to Online Models, plus derivations
+title: Comparing Online Linear Regression and Kalman Filter Approaches to Online Models Plus Derivations
 tags:
 - Online
 - Practical
@@ -104,7 +104,7 @@ An intuitive way to derive the Kalman Filter update is by starting at Bayes theo
 $$p(\beta | D_t) \propto p(y_t | \beta, D_{t-1}) p(\beta | D_{t-1}).$$
 
 Following the notation of [the wiki](https://en.wikipedia.org/wiki/Kalman_filter), we can assume 
-$$\beta| D_{t-1} \sim \mathbf{N}(\beta_{t-1}, P_{t-1})$$. Moreover, by assumption, $$y | D_{t-1} \sim \mathbf{N}(X^T \beta, \sigma^2 I_{id})$$, and so due to prsence of $\sigma$ in the formula, we immediately see that the variance of the residuals play an explicit role in the update formula, which was not the case in online linear regression. If we now look at the exponents (by taking the log), we can see 
+$$\beta| D_{t-1} \sim \mathbf{N}(\beta_{t-1}, P_{t-1})$$. Moreover, by assumption, $$y | D_{t-1} \sim \mathbf{N}(X^T \beta, \sigma^2 I_{id})$$, and so due to presence of $$\sigma$$ in the formula, we immediately see that the variance of the residuals play an explicit role in the update formula, which was not the case in online linear regression. If we now look at the exponents (by taking the log), we can see 
 
 $$\text{log} p(\beta | D_t) \propto (y_t - X_t^T \beta)^T (\sigma^2 I_{id})^{-1} (y_t - X_t^T \beta) + (\beta - \beta_{t-1})^T P_{t-1}^{-1} (\beta - \beta_{t-1}).$$
 
