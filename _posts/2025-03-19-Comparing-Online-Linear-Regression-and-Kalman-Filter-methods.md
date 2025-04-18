@@ -101,6 +101,7 @@ $$\min_{\beta_t} \sum_{i=1}^n \| y_i - x_i^T \beta_i\|_2^2 + \sum_{i=1}^{n-1}\|\
 which implies there will be a slightly different solution to the OLR model.
 
 An intuitive way to derive the Kalman Filter update is by starting at Bayes theorem. Unlike OLR above, the variance of the residuals of the estimate is explicitly found in the formula. Let $$D_t:= \{ (x_i,y_i) \}_{i \leq t}$$. From Bayes theorem, we can write
+
 $$p(\beta | D_t) \propto p(y_t | \beta, D_{t-1}) p(\beta | D_{t-1}).$$
 
 Following the notation of [the wiki](https://en.wikipedia.org/wiki/Kalman_filter), we can assume 
