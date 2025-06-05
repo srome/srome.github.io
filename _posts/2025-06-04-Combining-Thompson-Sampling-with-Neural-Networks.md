@@ -89,7 +89,7 @@ For each minibatch $$B_{t,h}:=\{ (x_i, y_{i}) \}_{i=1,\dots Kn}$$, $$h=1,..,H$$:
 
 Update $$\phi_t = \phi_{t,H}$$, $$\beta_{t} = \beta_{t,H}$$ and $$\Sigma_t = \Sigma_{t,H}$$. Calculate the inverse via the pseudoinverse $$\Sigma_t^{-1}:= \Sigma_t^\dagger$$.
   
-Note, that in the real algorithm, they choose to use the psuedoinverse denoted $$\Sigma^\dagger$$ to deal with cases where $\Sigma$ is singular or close to singular. 
+Note, that in the real algorithm, they choose to use the psuedoinverse denoted $$\Sigma^\dagger$$ to deal with cases where $$\Sigma$$ is singular or close to singular. 
 
 ### Practical Considerations
 
